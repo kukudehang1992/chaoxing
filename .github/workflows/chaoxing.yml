@@ -30,14 +30,7 @@ jobs:
           if [ -z "$CX_CONFIG" ]; then echo "缺少 CX_CONFIG 这个 Secret"; exit 1; fi
           printf '%s\n' "$CX_CONFIG" > config.ini
           echo "配置文件行数: $(wc -l < config.ini)"
-          python - <<'PY'
-import configparser
-c = configparser.ConfigParser(); c.read('config.ini', encoding='utf8')
-print("provider =", c.get('tiku', 'provider', fallback='(空)'))
-print("submit   =", c.get('tiku', 'submit', fallback='(空)'))
-print("课程ID    =", c.get('common', 'course_list', fallback='(空)'))
-print("用户名长度 =", len(c.get('common', 'username', fallback='')))
-PY
+          python -c "import configparser;c=configparser.ConfigParser();c.read('config.ini',encoding='utf8');print('provider =',c.get('tiku','provider'));print('submit =',c.get('tiku','submit'));print('course_list =',c.get('common','course_list'));print('用户名长度 =',len(c.get('common','username')))"
 
       - name: Run main.py
         run: python main.py -c config.ini
