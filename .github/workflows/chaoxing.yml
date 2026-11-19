@@ -1,7 +1,7 @@
 name: 刷课
 
 on:
-  # 只保留手动触发；push 不再自动跑。想加每天定时，把 schedule 两行注释去掉
+  # 只保留手动触发；push 不会自动跑。想加定时把 schedule 两行注释去掉
   workflow_dispatch:
   #schedule:
   #  - cron: "0 0 * * *"
@@ -10,27 +10,40 @@ jobs:
   Start:
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    strategy:
+      fail-fast: false      # 某个账号失败不影响其它账号
+      max-parallel: 2       # 同时最多跑 2 个账号，太快容易触发风控
+      matrix:
+        # 每加一个账号编号，就在仓库里建一个对应的 Secret：CX_CONFIG_1、CX_CONFIG_2 ...
+        account: [1, 2]
+    env:
+      CX_CONFIG: ${{ secrets[format('CX_CONFIG_{0}', matrix.account)] }}
     steps:
+      - name: 没有配置则跳过
+        if: env.CX_CONFIG == ''
+        run: echo "::notice::仓库里没有 CX_CONFIG_${{ matrix.account }} 这个 Secret，跳过该账号"
+
       - name: 拷贝代码
+        if: env.CX_CONFIG != ''
         uses: actions/checkout@v4
 
       - name: 设置python环境
+        if: env.CX_CONFIG != ''
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: 'pip'
 
       - name: 安装依赖包
+        if: env.CX_CONFIG != ''
         run: pip install -r ./requirements.txt
 
       - name: 生成配置文件
-        env:
-          CX_CONFIG: ${{ secrets.CX_CONFIG }}
+        if: env.CX_CONFIG != ''
         run: |
-          if [ -z "$CX_CONFIG" ]; then echo "缺少 CX_CONFIG 这个 Secret"; exit 1; fi
           printf '%s\n' "$CX_CONFIG" > config.ini
-          echo "配置文件行数: $(wc -l < config.ini)"
-          python -c "import configparser;c=configparser.ConfigParser();c.read('config.ini',encoding='utf8');print('provider =',c.get('tiku','provider'));print('submit =',c.get('tiku','submit'));print('course_list =',c.get('common','course_list'));print('用户名长度 =',len(c.get('common','username')))"
+          python -c "import configparser;c=configparser.ConfigParser();c.read('config.ini',encoding='utf8');print('账号${{ matrix.account }} -> provider =',c.get('tiku','provider'),'| submit =',c.get('tiku','submit'),'| course_list =',c.get('common','course_list'),'| 用户名长度 =',len(c.get('common','username')))"
 
       - name: Run main.py
+        if: env.CX_CONFIG != ''
         run: python main.py -c config.ini
