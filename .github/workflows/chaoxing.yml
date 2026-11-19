@@ -3,6 +3,11 @@ name: 刷课
 on:
   # 只保留手动触发；push 不会自动跑。想加定时把 schedule 两行注释去掉
   workflow_dispatch:
+    inputs:
+      accounts:
+        description: '要跑的账号编号，JSON 数组。只跑2号账户就填 ["2"]，全跑填 ["1","2"]'
+        required: false
+        default: '["1","2"]'
   #schedule:
   #  - cron: "0 0 * * *"
 
@@ -19,7 +24,8 @@ jobs:
       max-parallel: 2       # 同时最多跑 2 个账号，太快容易触发风控
       matrix:
         # 每加一个账号编号，就在仓库里建一个对应的 Secret：CX_CONFIG_1、CX_CONFIG_2 ...
-        account: [1, 2]
+        # 触发时可在 accounts 输入里指定只跑哪几个，默认全部
+        account: ${{ fromJSON(inputs.accounts) }}
     env:
       CX_CONFIG: ${{ secrets[format('CX_CONFIG_{0}', matrix.account)] }}
     steps:
