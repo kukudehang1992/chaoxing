@@ -10,6 +10,10 @@ jobs:
   Start:
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    # 同一账号不并发：正在跑时再点触发，会排队而不是重复跑一遍
+    concurrency:
+      group: chaoxing-account-${{ matrix.account }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false      # 某个账号失败不影响其它账号
       max-parallel: 2       # 同时最多跑 2 个账号，太快容易触发风控
